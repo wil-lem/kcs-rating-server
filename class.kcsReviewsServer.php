@@ -3,8 +3,16 @@
 class kcsReviewsServer extends kcsRatingServer
 {
 
-    var $reviews = [];
+    /**
+     * @var array 
+     * @deprecated
+     */
+    private array $reviews = [];
 
+    /**
+     * @var GeminiLabs\SiteReviews\Reviews
+     */
+    private GeminiLabs\SiteReviews\Reviews $glsr_reviews;
 
     function load()
     {
@@ -13,7 +21,32 @@ class kcsReviewsServer extends kcsRatingServer
         $this->loadReviews();
     }
 
-    function loadReviews() {
+    function loadReviews(): void {
+        if(function_exists('glsr')) {
+            $this->loadGlsrReviews();
+            return;
+        }
+        $this->loadAitReviews();
+    }
+
+    function loadGlsrReviews(): void {
+
+        $this->glsr_reviews = glsr_get_reviews([
+            'post_id' => $this->post->ID,
+            'status' => 'approved',
+            'number' => 0,
+        ]);        
+    }
+
+    /**
+     * Load the AIT reviews
+     * 
+     * @deprecated
+     * @return void
+     * @throws Exception
+     */
+    function loadAitReviews() {
+
         $args = [
             'meta_query' => [
                 [
@@ -37,6 +70,23 @@ class kcsReviewsServer extends kcsRatingServer
         $data = parent::output();
 
         $data['reviews'] = [];
+        if(function_exists('glsr')) {
+            $data['reviews'] = $this->outputGlsrReviews();
+        } else {
+            $data['reviews'] = $this->outputAitReviews();
+        }
+        return $data;
+    }
+
+
+
+    /**
+     * Output the AIT reviews
+     * 
+     * @deprecated
+     * @return array
+     */
+    function outputAitReviews(): array {
         if(count($this->reviews)) {
             foreach ($this->reviews AS $review) {
                 $data['reviews'][] = $this->outputReview($review);
@@ -45,6 +95,51 @@ class kcsReviewsServer extends kcsRatingServer
         return $data;
     }
 
+    /**
+     * Output the GLSR reviews
+     * 
+     * @return array
+     */
+    function outputGlsrReviews(): array {
+        $data = [];
+        foreach ($this->glsr_reviews AS $review) {
+            $data[] = $this->outputGlsrReview($review);
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Output the GLSR review data
+     * 
+     * @param GeminiLabs\SiteReviews\Review $review
+     * @return stdClass
+     */
+    function outputGlsrReview(GeminiLabs\SiteReviews\Review $review): stdClass {
+        $output = new stdClass();
+
+        $output->author = $review->get('title');
+        $output->content = $review->get('content');
+        $output->date = strtotime($review->get('date'));
+        $output->ratings = [];
+        $output->rating_mean = $review->get('rating');
+        $output->rating_mean_rounded = $review->get('rating');
+
+        $postMeta = get_post_meta($review->ID, 'kcs_migrate_review_metadata', true);
+        if(!empty($postMeta['ratings'])) {
+            $output->ratings = $postMeta['ratings'];
+        } 
+        return $output;
+    }
+
+
+    /**
+     * Output the review data
+     * 
+     * @deprecated
+     * @param WP_Post $review
+     * @return stdClass
+     */
     function outputReview($review) {
         $output = new stdClass();
 

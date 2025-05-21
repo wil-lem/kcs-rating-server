@@ -28,11 +28,6 @@ require_once( KCS_RATINGS_SERVER__PLUGIN_DIR . 'class.kcsRatingAPIController.php
 
 
 add_action('rest_api_init', function () {
-    register_rest_route('kcs-ratings-server/v1', '/all-reviews-csv', array(
-        'methods'  => 'GET',
-        'callback' => 'kcs_ratings_server_all_reviews_csv',
-        'permission_callback' => '__return_true', // No auth required
-    ));
     register_rest_route('kcs-ratings-server/v1', '/all-reviews', array(
         'methods'  => 'GET',
         'callback' => 'kcs_ratings_server_all_reviews',
@@ -41,40 +36,15 @@ add_action('rest_api_init', function () {
 });
 
 function kcs_ratings_server_all_reviews( $request ) {
+    if(function_exists('glsr')) {
+        // The api does not work with the glsr plugin
+        return new WP_Error( 'glsr_error', 'The glsr plugin is not supported.', array( 'status' => 500 ) );
+    }
     $api =  new KcsRatingAPIController();
     $response = $api->index();
     return new WP_REST_Response( $response, 200 );
 }
 
-function kcs_ratings_server_all_reviews_csv( $request ): void {
-    $api =  new KcsRatingAPIController();
-    $companies = $api->index();
-
-    // Create a CSV file
-    $csv_file = fopen('php://output', 'w');
-    // Set the headers for the CSV file
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="all_reviews.csv"');
-    // Add the header row
-    fputcsv($csv_file, array('Company ID', 'Company Name', 'Review Author', 'Review Content', 'Review Date', 'Rating Mean'));
-    // Loop through the companies and their reviews
-    foreach ($companies as $company) {
-        foreach ($company['reviews'] as $review) {
-            fputcsv($csv_file, array(
-                $company['id'],
-                $company['post_title'],
-                $review->author,
-                $review->content,
-                date('Y-m-d H:i:s', $review->date),
-                $review->rating_mean
-            ));
-        }
-    }
-    // Close the CSV file
-    fclose($csv_file);
-    // Exit to prevent any additional output
-    exit();
-}
 
 
 if( is_admin() )

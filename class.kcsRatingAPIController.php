@@ -43,7 +43,7 @@ class KcsRatingAPIController
         // Dot the same for the ait-dir-item post type
         $args = array(
             'post_type' => 'ait-dir-item',
-            'posts_per_page' => -1,
+            'posts_per_page' => 10,
         );
         $query = new WP_Query($args);
         $posts = $query->posts;
