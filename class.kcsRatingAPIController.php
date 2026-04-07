@@ -40,17 +40,6 @@ class KcsRatingAPIController
             $commpanies[] = $this->getCompanyData($post);
         }
 
-        // Dot the same for the ait-dir-item post type
-        $args = array(
-            'post_type' => 'ait-dir-item',
-            'posts_per_page' => 10,
-        );
-        $query = new WP_Query($args);
-        $posts = $query->posts;
-        foreach ($posts as $post) {
-            $commpanies[] = $this->getCompanyData($post);
-        }
-
         return $commpanies;
     }
 
